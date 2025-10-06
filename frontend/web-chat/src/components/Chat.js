@@ -4,6 +4,7 @@ import "./Chat.css";
 export default function Chat({ apiUrl }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
 
   const fetchMessages = async () => {
@@ -26,16 +27,28 @@ export default function Chat({ apiUrl }) {
 
   const sendMessage = async () => {
     if (!text.trim()) return;
-    await fetch(`${apiUrl}/api/messages`, {
+    setSending(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nickname: "batuhan",
         text,
       }),
-    });
-    setText("");
-    fetchMessages();
+      });
+      if (!res.ok) throw new Error(`POST failed: ${res.status}`);
+      const created = await res.json();
+      // optimistic append so message doesn't flicker/disappear
+      setMessages((prev) => [created, ...prev]);
+      setText("");
+      // kick a refresh to get updated sentiment shortly after
+      setTimeout(fetchMessages, 1200);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -74,7 +87,7 @@ export default function Chat({ apiUrl }) {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
         />
-        <button className="chat-send-btn" onClick={sendMessage}>
+        <button className="chat-send-btn" onClick={sendMessage} disabled={sending}>
           Gönder
         </button>
       </div>
