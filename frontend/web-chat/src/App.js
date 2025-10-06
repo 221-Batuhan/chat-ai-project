@@ -1,8 +1,7 @@
 import Chat from "./components/Chat";
 
 function App() {
-  // const apiUrl = "https://chat-ai-project.onrender.com"; 
-  const apiUrl = "http://localhost:5135"; 
+  const apiUrl = "https://chat-ai-project.onrender.com"; 
   return <Chat apiUrl={apiUrl} />;  
 }
 
