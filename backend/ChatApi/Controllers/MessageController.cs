@@ -44,7 +44,7 @@ namespace ChatApi.Controllers
                 Nickname = string.IsNullOrWhiteSpace(incoming.Nickname) ? "anon" : incoming.Nickname,
                 Text = incoming.Text,
                 CreatedAt = DateTime.UtcNow,
-                Sentiment = "",
+                Sentiment = null,       // nullable, artık 400 hatası yok
                 SentimentScore = 0.0
             };
 
