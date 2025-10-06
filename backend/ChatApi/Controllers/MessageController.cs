@@ -60,7 +60,7 @@ namespace ChatApi.Controllers
             try
             {
                 var client = _httpFactory.CreateClient();
-                client.Timeout = TimeSpan.FromSeconds(10);
+                client.Timeout = TimeSpan.FromSeconds(15);
 
                 var tryPayloads = new[]
                 {
@@ -71,19 +71,26 @@ namespace ChatApi.Controllers
                 HttpResponseMessage? resp = null;
                 string? respJson = null;
 
+                Console.WriteLine($"AI call: url={aiUrl} messageId={msg.Id}");
                 foreach (var payload in tryPayloads)
                 {
                     var content = new StringContent(payload, Encoding.UTF8, "application/json");
                     try
                     {
+                        Console.WriteLine($"AI call: trying payload {payload}");
                         resp = await client.PostAsync(aiUrl, content);
+                        Console.WriteLine($"AI call: status={(int)resp.StatusCode} {resp.ReasonPhrase}");
                         if (resp.IsSuccessStatusCode)
                         {
                             respJson = await resp.Content.ReadAsStringAsync();
+                            Console.WriteLine($"AI call: body length={respJson?.Length}");
                             if (!string.IsNullOrWhiteSpace(respJson)) break;
                         }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("AI call try failed: " + ex.Message);
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(respJson))
@@ -118,6 +125,11 @@ namespace ChatApi.Controllers
                         msg.SentimentScore = score;
                         _db.Messages.Update(msg);
                         await _db.SaveChangesAsync();
+                        Console.WriteLine($"AI parsed: id={msg.Id} sentiment={msg.Sentiment} score={msg.SentimentScore}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("AI parse: could not extract label/score from response");
                     }
                 }
             }
