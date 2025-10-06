@@ -3583,11 +3583,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/batuhanacan/chat-ai-project/chat-ai-project/backend/ChatApi/ChatApi.csproj",
+      "projectUniqueName": "/Users/batuhanacan/Desktop/chat-ai-project/backend/ChatApi/ChatApi.csproj",
       "projectName": "ChatApi",
-      "projectPath": "/Users/batuhanacan/chat-ai-project/chat-ai-project/backend/ChatApi/ChatApi.csproj",
+      "projectPath": "/Users/batuhanacan/Desktop/chat-ai-project/backend/ChatApi/ChatApi.csproj",
       "packagesPath": "/Users/batuhanacan/.nuget/packages/",
-      "outputPath": "/Users/batuhanacan/chat-ai-project/chat-ai-project/backend/ChatApi/obj/",
+      "outputPath": "/Users/batuhanacan/Desktop/chat-ai-project/backend/ChatApi/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/Users/batuhanacan/.nuget/NuGet/NuGet.Config"

@@ -37,15 +37,16 @@ namespace ChatApi.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> PostMessage([FromBody] Message incoming)
+        public async Task<IActionResult> PostMessage([FromBody] CreateMessageRequest request)
         {
-            if (incoming == null || string.IsNullOrWhiteSpace(incoming.Text))
+            Console.WriteLine("POST /api/messages received");
+            if (request == null || string.IsNullOrWhiteSpace(request.Text))
                 return BadRequest("Mesaj boş olamaz.");
 
             var msg = new Message
             {
-                Nickname = string.IsNullOrWhiteSpace(incoming.Nickname) ? "anon" : incoming.Nickname,
-                Text = incoming.Text,
+                Nickname = string.IsNullOrWhiteSpace(request.Nickname) ? "anon" : request.Nickname,
+                Text = request.Text,
                 CreatedAt = DateTime.UtcNow,
                 Sentiment = null,       // nullable, artık 400 hatası yok
                 SentimentScore = 0.0
@@ -53,16 +54,18 @@ namespace ChatApi.Controllers
 
             _db.Messages.Add(msg);
             await _db.SaveChangesAsync();
+            Console.WriteLine($"Message saved id={msg.Id} nickname={msg.Nickname}");
 
             var aiUrl = Environment.GetEnvironmentVariable("AI_SERVICE_URL")
                         ?? _aiConfig.ServiceUrl
                         ?? "https://your-hf-space-url/api/predict";
 
+            Console.WriteLine($"AI URL resolved: {aiUrl}");
             try
             {
                 var client = _httpFactory.CreateClient();
                 client.Timeout = TimeSpan.FromSeconds(15);
-
+                Console.WriteLine($"text resolved: {msg.Text}");
                 var tryPayloads = new[]
                 {
                     JsonSerializer.Serialize(new { inputs = msg.Text }),
@@ -135,7 +138,7 @@ namespace ChatApi.Controllers
                         if (first.TryGetProperty("label", out var fLabel2)) label = fLabel2.GetString();
                         if (first.TryGetProperty("score", out var fScore2)) score = fScore2.GetDouble();
                     }
-
+                    Console.WriteLine($"AI parsed: label={label} score={score}");
                     if (!string.IsNullOrWhiteSpace(label))
                     {
                         msg.Sentiment = label.ToLowerInvariant();
@@ -188,35 +191,46 @@ namespace ChatApi.Controllers
                                     Console.WriteLine($"AI HF result status: {(int)respGet.StatusCode} {respGet.ReasonPhrase}");
                                     var body = await respGet.Content.ReadAsStringAsync();
                                     Console.WriteLine($"AI HF result body len={body?.Length}");
+                                    Console.WriteLine($"AI HF result body content: {body}");
 
-                                    // The response may be JSON or SSE lines. Try JSON first.
+                                    
+                                    // Parse SSE format response
                                     string? label = null; double score = 0.0;
                                     bool parsed = false;
-                                    try
+                                    
+                                    // Try to extract JSON from SSE format
+                                    var lines = body?.Split('\n') ?? Array.Empty<string>();
+                                    foreach (var line in lines)
                                     {
-                                        using var rd = JsonDocument.Parse(body);
-                                        (label, score) = ExtractLabelScore(rd.RootElement);
-                                        parsed = !string.IsNullOrWhiteSpace(label);
-                                    }
-                                    catch
-                                    {
-                                        // Try to extract JSON from SSE by taking last JSON-looking line
-                                        var lines = body?.Split('\n') ?? Array.Empty<string>();
-                                        foreach (var line in lines.Reverse())
+                                        var trimmed = line.Trim();
+                                        // Look for lines that start with "data: " and contain JSON
+                                        if (trimmed.StartsWith("data: "))
                                         {
-                                            var trimmed = line.Trim();
-                                            if (trimmed.StartsWith("{") && trimmed.EndsWith("}"))
+                                            var jsonPart = trimmed.Substring(6).Trim(); // Remove "data: " prefix
+                                            if (jsonPart.StartsWith("[") && jsonPart.EndsWith("]"))
                                             {
                                                 try
                                                 {
-                                                    using var rd2 = JsonDocument.Parse(trimmed);
-                                                    (label, score) = ExtractLabelScore(rd2.RootElement);
+                                                    using var rd = JsonDocument.Parse(jsonPart);
+                                                    (label, score) = ExtractLabelScore(rd.RootElement);
                                                     parsed = !string.IsNullOrWhiteSpace(label);
+                                                    if (parsed) break;
                                                 }
                                                 catch { }
-                                                break;
                                             }
                                         }
+                                    }
+                                    
+                                    // Fallback: try parsing the entire body as JSON
+                                    if (!parsed)
+                                    {
+                                        try
+                                        {
+                                            using var rd = JsonDocument.Parse(body);
+                                            (label, score) = ExtractLabelScore(rd.RootElement);
+                                            parsed = !string.IsNullOrWhiteSpace(label);
+                                        }
+                                        catch { }
                                     }
 
                                     if (parsed)
@@ -252,62 +266,34 @@ namespace ChatApi.Controllers
 
             return CreatedAtAction(nameof(GetMessages), new { id = msg.Id }, msg);
         }
-
         private static (string? label, double score) ExtractLabelScore(JsonElement root)
         {
-            string? label = null; double score = 0.0;
-
-            if (root.TryGetProperty("label", out var pLabel))
-            {
-                label = pLabel.GetString();
-                if (root.TryGetProperty("score", out var pScore)) score = pScore.GetDouble();
-                return (label, score);
-            }
-
-            if (root.TryGetProperty("data", out var pData) && pData.ValueKind == JsonValueKind.Array && pData.GetArrayLength() > 0)
-            {
-                var first = pData[0];
-                if (first.ValueKind == JsonValueKind.Object)
-                {
-                    if (first.TryGetProperty("label", out var fLabel)) label = fLabel.GetString();
-                    if (first.TryGetProperty("score", out var fScore)) score = fScore.GetDouble();
-                }
-                else if (first.ValueKind == JsonValueKind.String)
-                {
-                    label = first.GetString();
-                }
-                return (label, score);
-            }
-
+            Console.WriteLine("ExtractLabelScore");
+            Console.WriteLine(root);            
+            // JSON bir array ise ilk elemanı al
             if (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0)
             {
                 var first = root[0];
-                if (first.ValueKind == JsonValueKind.Object)
-                {
-                    if (first.TryGetProperty("label", out var fLabel2)) label = fLabel2.GetString();
-                    if (first.TryGetProperty("score", out var fScore2)) score = fScore2.GetDouble();
-                }
-                else if (first.ValueKind == JsonValueKind.String)
-                {
-                    label = first.GetString();
-                }
+
+                string? label = first.TryGetProperty("label", out var labelProp)
+                    ? labelProp.GetString()
+                    : null;
+
+                double score = first.TryGetProperty("score", out var scoreProp)
+                    ? scoreProp.GetDouble()
+                    : 0.0;
+
                 return (label, score);
             }
 
-            // Some Spaces return { output: { label, score } } or { output: "positive" }
-            if (root.TryGetProperty("output", out var pOut))
-            {
-                if (pOut.ValueKind == JsonValueKind.Object)
-                {
-                    if (pOut.TryGetProperty("label", out var oLabel)) label = oLabel.GetString();
-                    if (pOut.TryGetProperty("score", out var oScore)) score = oScore.GetDouble();
-                }
-                else if (pOut.ValueKind == JsonValueKind.String)
-                {
-                    label = pOut.GetString();
-                }
-            }
-            return (label, score);
+            // Eğer array değilse veya boşsa varsayılan değer dön
+            return (null, 0.0);
         }
+    }
+    
+    public class CreateMessageRequest
+    {
+        public string? Nickname { get; set; }
+        public string? Text { get; set; }
     }
 }
