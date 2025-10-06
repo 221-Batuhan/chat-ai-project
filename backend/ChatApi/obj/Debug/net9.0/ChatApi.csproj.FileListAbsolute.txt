@@ -154,3 +154,16 @@
 /Users/batuhanacan/chat-ai-project/backend/ChatApi/obj/Debug/net9.0/ChatApi.pdb
 /Users/batuhanacan/chat-ai-project/backend/ChatApi/obj/Debug/net9.0/ChatApi.genruntimeconfig.cache
 /Users/batuhanacan/chat-ai-project/backend/ChatApi/obj/Debug/net9.0/ref/ChatApi.dll
+/Users/batuhanacan/chat-ai-project/backend/ChatApi/bin/Debug/net9.0/out/out/web.config
+/Users/batuhanacan/chat-ai-project/backend/ChatApi/bin/Debug/net9.0/out/web.config
+/Users/batuhanacan/chat-ai-project/backend/ChatApi/bin/Debug/net9.0/out/appsettings.Development.json
+/Users/batuhanacan/chat-ai-project/backend/ChatApi/bin/Debug/net9.0/out/appsettings.json
+/Users/batuhanacan/chat-ai-project/backend/ChatApi/bin/Debug/net9.0/out/ChatApi.deps.json
+/Users/batuhanacan/chat-ai-project/backend/ChatApi/bin/Debug/net9.0/out/ChatApi.runtimeconfig.json
+/Users/batuhanacan/chat-ai-project/backend/ChatApi/bin/Debug/net9.0/out/ChatApi.staticwebassets.endpoints.json
+/Users/batuhanacan/chat-ai-project/backend/ChatApi/bin/Debug/net9.0/out/out/appsettings.Development.json
+/Users/batuhanacan/chat-ai-project/backend/ChatApi/bin/Debug/net9.0/out/out/appsettings.json
+/Users/batuhanacan/chat-ai-project/backend/ChatApi/bin/Debug/net9.0/out/out/ChatApi.deps.json
+/Users/batuhanacan/chat-ai-project/backend/ChatApi/bin/Debug/net9.0/out/out/ChatApi.runtimeconfig.json
+/Users/batuhanacan/chat-ai-project/backend/ChatApi/bin/Debug/net9.0/out/out/ChatApi.staticwebassets.endpoints.json
+/Users/batuhanacan/chat-ai-project/backend/ChatApi/obj/Debug/net9.0/ChatApi.sourcelink.json
