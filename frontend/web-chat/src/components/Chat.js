@@ -1,66 +1,85 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import "./Chat.css";
 
-export default function Chat({ apiUrl }) {
+export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+  const messagesEndRef = useRef(null);
+
+  const fetchMessages = async () => {
+    const res = await fetch("https://chat-ai-project.onrender.com/api/messages");
+    const data = await res.json();
+    setMessages(data);
+  };
 
   useEffect(() => {
     fetchMessages();
+    const interval = setInterval(fetchMessages, 2000);
+    return () => clearInterval(interval);
   }, []);
 
-  async function fetchMessages() {
-    try {
-      const res = await fetch(`${apiUrl}/api/messages`);
-      const data = await res.json();
-      setMessages(data.reverse());
-    } catch (err) {
-      console.error("Fetch error:", err);
-    }
-  }
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-  async function sendMessage() {
-    if (!text) return;
-    try {
-      await fetch(`${apiUrl}/api/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nickname: "anon", text }),
-      });
-      setText("");
-      fetchMessages();
-    } catch (err) {
-      console.error("Send error:", err);
-    }
-  }
+  const sendMessage = async () => {
+    if (!text.trim()) return;
+    await fetch("https://chat-ai-project.onrender.com/api/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nickname: "batuhan",
+        text,
+        sentiment: "neutral",
+      }),
+    });
+    setText("");
+    fetchMessages();
+  };
 
   return (
-    <div style={{ maxWidth: 500, margin: "auto", fontFamily: "Arial" }}>
-      <h1>Chat App</h1>
-      <div
-        style={{
-          border: "1px solid gray",
-          padding: 10,
-          minHeight: 300,
-          overflowY: "auto",
-          marginBottom: 10,
-        }}
-      >
-        {messages.map((m) => (
-          <div key={m.id} style={{ marginBottom: 5 }}>
-            <b>{m.nickname}:</b> {m.text} <i>({m.sentiment})</i>
+    <div className="chat-container">
+      <h2 className="chat-title">Chat AI</h2>
+      <div className="chat-messages">
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`chat-message ${
+              msg.nickname === "batuhan" ? "own-message" : ""
+            }`}
+          >
+            <div className="chat-avatar">
+              {msg.nickname[0].toUpperCase()}
+            </div>
+            <div className="chat-content">
+              <div className="chat-header">
+                <span className="chat-nickname">{msg.nickname}</span>
+                <span
+                  className={`chat-sentiment ${msg.sentiment}`}
+                  title="Duygu Analizi"
+                >
+                  {msg.sentiment}
+                </span>
+              </div>
+              <div className="chat-text">{msg.text}</div>
+            </div>
           </div>
         ))}
+        <div ref={messagesEndRef} />
       </div>
-      <input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-        style={{ width: "80%", padding: 5 }}
-      />
-      <button onClick={sendMessage} style={{ padding: 5, marginLeft: 5 }}>
-        Send
-      </button>
+      <div className="chat-input-area">
+        <input
+          className="chat-input"
+          type="text"
+          placeholder="Mesajınızı yazın..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+        />
+        <button className="chat-send-btn" onClick={sendMessage}>
+          Gönder
+        </button>
+      </div>
     </div>
   );
 }
