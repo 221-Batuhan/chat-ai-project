@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "rkdw7hhb+TU=",
+  "dgSpecHash": "SgADbM5801I=",
   "success": true,
-  "projectFilePath": "/Users/batuhanacan/chat-ai-project/backend/ChatApi/ChatApi.csproj",
+  "projectFilePath": "/Users/batuhanacan/chat-ai-project/chat-ai-project/backend/ChatApi/ChatApi.csproj",
   "expectedPackageFiles": [
     "/Users/batuhanacan/.nuget/packages/humanizer.core/2.14.1/humanizer.core.2.14.1.nupkg.sha512",
     "/Users/batuhanacan/.nuget/packages/microsoft.aspnetcore.openapi/9.0.9/microsoft.aspnetcore.openapi.9.0.9.nupkg.sha512",

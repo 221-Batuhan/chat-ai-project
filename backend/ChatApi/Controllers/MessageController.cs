@@ -16,11 +16,13 @@ namespace ChatApi.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IHttpClientFactory _httpFactory;
+        private readonly AIConfig _aiConfig;
 
-        public MessagesController(AppDbContext db, IHttpClientFactory httpFactory)
+        public MessagesController(AppDbContext db, IHttpClientFactory httpFactory, AIConfig aiConfig)
         {
             _db = db;
             _httpFactory = httpFactory;
+            _aiConfig = aiConfig;
         }
 
         [HttpGet]
@@ -51,7 +53,8 @@ namespace ChatApi.Controllers
             _db.Messages.Add(msg);
             await _db.SaveChangesAsync();
 
-            var aiUrl = Environment.GetEnvironmentVariable("AI_SERVICE_URL") 
+            var aiUrl = Environment.GetEnvironmentVariable("AI_SERVICE_URL")
+                        ?? _aiConfig.ServiceUrl
                         ?? "https://your-hf-space-url/api/predict/";
 
             try

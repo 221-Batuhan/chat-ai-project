@@ -27,18 +27,15 @@ namespace ChatApi.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Nickname")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Sentiment")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<double>("SentimentScore")
                         .HasColumnType("REAL");
 
                     b.Property<string>("Text")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

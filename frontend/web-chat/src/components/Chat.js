@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./Chat.css";
 
-export default function Chat() {
+export default function Chat({ apiUrl }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const messagesEndRef = useRef(null);
 
   const fetchMessages = async () => {
-    const res = await fetch("https://chat-ai-project.onrender.com/api/messages");
+    const res = await fetch(`${apiUrl}/api/messages?t=${Date.now()}`, {
+      cache: "no-store",
+    });
     const data = await res.json();
     setMessages(data);
   };
@@ -24,13 +26,12 @@ export default function Chat() {
 
   const sendMessage = async () => {
     if (!text.trim()) return;
-    await fetch("https://chat-ai-project.onrender.com/api/messages", {
+    await fetch(`${apiUrl}/api/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nickname: "batuhan",
         text,
-        sentiment: "neutral",
       }),
     });
     setText("");
@@ -49,16 +50,13 @@ export default function Chat() {
             }`}
           >
             <div className="chat-avatar">
-              {msg.nickname[0].toUpperCase()}
+              {(msg.nickname || "?")[0].toUpperCase()}
             </div>
             <div className="chat-content">
               <div className="chat-header">
                 <span className="chat-nickname">{msg.nickname}</span>
-                <span
-                  className={`chat-sentiment ${msg.sentiment}`}
-                  title="Duygu Analizi"
-                >
-                  {msg.sentiment}
+                <span className={`chat-sentiment ${msg.sentiment || "pending"}`} title="Duygu Analizi">
+                  {msg.sentiment || "analysing"}
                 </span>
               </div>
               <div className="chat-text">{msg.text}</div>
