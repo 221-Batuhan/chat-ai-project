@@ -55,7 +55,7 @@ namespace ChatApi.Controllers
 
             var aiUrl = Environment.GetEnvironmentVariable("AI_SERVICE_URL")
                         ?? _aiConfig.ServiceUrl
-                        ?? "https://your-hf-space-url/api/predict/";
+                        ?? "https://your-hf-space-url/api/predict";
 
             try
             {
@@ -71,26 +71,42 @@ namespace ChatApi.Controllers
                 HttpResponseMessage? resp = null;
                 string? respJson = null;
 
-                Console.WriteLine($"AI call: url={aiUrl} messageId={msg.Id}");
-                foreach (var payload in tryPayloads)
+                // Build possible endpoints to try
+                var urlsToTry = new System.Collections.Generic.List<string>();
+                if (!string.IsNullOrWhiteSpace(aiUrl)) urlsToTry.Add(aiUrl.TrimEnd('/'));
+                try
                 {
-                    var content = new StringContent(payload, Encoding.UTF8, "application/json");
-                    try
+                    var u = new Uri(urlsToTry[0]);
+                    var root = $"{u.Scheme}://{u.Host}{(u.IsDefaultPort ? string.Empty : ":" + u.Port)}";
+                    if (!urlsToTry[0].EndsWith("/run/predict")) urlsToTry.Add(root + "/run/predict");
+                    if (!urlsToTry[0].EndsWith("/api/predict")) urlsToTry.Add(root + "/api/predict");
+                }
+                catch { }
+
+                foreach (var url in urlsToTry.Distinct())
+                {
+                    Console.WriteLine($"AI call: url={url} messageId={msg.Id}");
+                    foreach (var payload in tryPayloads)
                     {
-                        Console.WriteLine($"AI call: trying payload {payload}");
-                        resp = await client.PostAsync(aiUrl, content);
-                        Console.WriteLine($"AI call: status={(int)resp.StatusCode} {resp.ReasonPhrase}");
-                        if (resp.IsSuccessStatusCode)
+                        var content = new StringContent(payload, Encoding.UTF8, "application/json");
+                        try
                         {
-                            respJson = await resp.Content.ReadAsStringAsync();
-                            Console.WriteLine($"AI call: body length={respJson?.Length}");
-                            if (!string.IsNullOrWhiteSpace(respJson)) break;
+                            Console.WriteLine($"AI call: trying payload {payload}");
+                            resp = await client.PostAsync(url, content);
+                            Console.WriteLine($"AI call: status={(int)resp.StatusCode} {resp.ReasonPhrase}");
+                            if (resp.IsSuccessStatusCode)
+                            {
+                                respJson = await resp.Content.ReadAsStringAsync();
+                                Console.WriteLine($"AI call: body length={respJson?.Length}");
+                                if (!string.IsNullOrWhiteSpace(respJson)) break;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("AI call try failed: " + ex.Message);
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("AI call try failed: " + ex.Message);
-                    }
+                    if (!string.IsNullOrWhiteSpace(respJson)) break;
                 }
 
                 if (!string.IsNullOrWhiteSpace(respJson))
