@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace ChatApi.Controllers
 {
@@ -148,6 +149,101 @@ namespace ChatApi.Controllers
                         Console.WriteLine("AI parse: could not extract label/score from response");
                     }
                 }
+                else
+                {
+                    // Try Hugging Face Spaces (Gradio) two-step flow if URL looks like hf.space
+                    try
+                    {
+                        var baseUri = new Uri(aiUrl);
+                        var isHf = baseUri.Host.EndsWith(".hf.space", StringComparison.OrdinalIgnoreCase);
+                        if (isHf)
+                        {
+                            var rootUrl = $"{baseUri.Scheme}://{baseUri.Host}{(baseUri.IsDefaultPort ? string.Empty : ":" + baseUri.Port)}";
+                            var callUrl = rootUrl + "/gradio_api/call/predict";
+                            Console.WriteLine($"AI HF call: POST {callUrl}");
+
+                            var payload = JsonSerializer.Serialize(new { data = new[] { msg.Text } });
+                            var content = new StringContent(payload, Encoding.UTF8, "application/json");
+                            var respCall = await client.PostAsync(callUrl, content);
+                            Console.WriteLine($"AI HF call status: {(int)respCall.StatusCode} {respCall.ReasonPhrase}");
+                            if (respCall.IsSuccessStatusCode)
+                            {
+                                var callBody = await respCall.Content.ReadAsStringAsync();
+                                Console.WriteLine($"AI HF call body: {callBody}");
+                                string? eventId = null;
+                                try
+                                {
+                                    using var callDoc = JsonDocument.Parse(callBody);
+                                    var r = callDoc.RootElement;
+                                    if (r.TryGetProperty("event_id", out var e1)) eventId = e1.GetString();
+                                    else if (r.TryGetProperty("eventId", out var e2)) eventId = e2.GetString();
+                                }
+                                catch { }
+
+                                if (!string.IsNullOrWhiteSpace(eventId))
+                                {
+                                    var getUrl = rootUrl + "/gradio_api/call/predict/" + eventId;
+                                    Console.WriteLine($"AI HF result GET: {getUrl}");
+                                    var respGet = await client.GetAsync(getUrl);
+                                    Console.WriteLine($"AI HF result status: {(int)respGet.StatusCode} {respGet.ReasonPhrase}");
+                                    var body = await respGet.Content.ReadAsStringAsync();
+                                    Console.WriteLine($"AI HF result body len={body?.Length}");
+
+                                    // The response may be JSON or SSE lines. Try JSON first.
+                                    string? label = null; double score = 0.0;
+                                    bool parsed = false;
+                                    try
+                                    {
+                                        using var rd = JsonDocument.Parse(body);
+                                        (label, score) = ExtractLabelScore(rd.RootElement);
+                                        parsed = !string.IsNullOrWhiteSpace(label);
+                                    }
+                                    catch
+                                    {
+                                        // Try to extract JSON from SSE by taking last JSON-looking line
+                                        var lines = body?.Split('\n') ?? Array.Empty<string>();
+                                        foreach (var line in lines.Reverse())
+                                        {
+                                            var trimmed = line.Trim();
+                                            if (trimmed.StartsWith("{") && trimmed.EndsWith("}"))
+                                            {
+                                                try
+                                                {
+                                                    using var rd2 = JsonDocument.Parse(trimmed);
+                                                    (label, score) = ExtractLabelScore(rd2.RootElement);
+                                                    parsed = !string.IsNullOrWhiteSpace(label);
+                                                }
+                                                catch { }
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    if (parsed)
+                                    {
+                                        msg.Sentiment = label!.ToLowerInvariant();
+                                        msg.SentimentScore = score;
+                                        _db.Messages.Update(msg);
+                                        await _db.SaveChangesAsync();
+                                        Console.WriteLine($"AI parsed (HF): id={msg.Id} sentiment={msg.Sentiment} score={msg.SentimentScore}");
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("AI HF parse: could not extract label/score");
+                                    }
+                                }
+                                else
+                                {
+                                    Console.WriteLine("AI HF call: event_id not found");
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex2)
+                    {
+                        Console.WriteLine("AI HF flow error: " + ex2.Message);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -155,6 +251,63 @@ namespace ChatApi.Controllers
             }
 
             return CreatedAtAction(nameof(GetMessages), new { id = msg.Id }, msg);
+        }
+
+        private static (string? label, double score) ExtractLabelScore(JsonElement root)
+        {
+            string? label = null; double score = 0.0;
+
+            if (root.TryGetProperty("label", out var pLabel))
+            {
+                label = pLabel.GetString();
+                if (root.TryGetProperty("score", out var pScore)) score = pScore.GetDouble();
+                return (label, score);
+            }
+
+            if (root.TryGetProperty("data", out var pData) && pData.ValueKind == JsonValueKind.Array && pData.GetArrayLength() > 0)
+            {
+                var first = pData[0];
+                if (first.ValueKind == JsonValueKind.Object)
+                {
+                    if (first.TryGetProperty("label", out var fLabel)) label = fLabel.GetString();
+                    if (first.TryGetProperty("score", out var fScore)) score = fScore.GetDouble();
+                }
+                else if (first.ValueKind == JsonValueKind.String)
+                {
+                    label = first.GetString();
+                }
+                return (label, score);
+            }
+
+            if (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0)
+            {
+                var first = root[0];
+                if (first.ValueKind == JsonValueKind.Object)
+                {
+                    if (first.TryGetProperty("label", out var fLabel2)) label = fLabel2.GetString();
+                    if (first.TryGetProperty("score", out var fScore2)) score = fScore2.GetDouble();
+                }
+                else if (first.ValueKind == JsonValueKind.String)
+                {
+                    label = first.GetString();
+                }
+                return (label, score);
+            }
+
+            // Some Spaces return { output: { label, score } } or { output: "positive" }
+            if (root.TryGetProperty("output", out var pOut))
+            {
+                if (pOut.ValueKind == JsonValueKind.Object)
+                {
+                    if (pOut.TryGetProperty("label", out var oLabel)) label = oLabel.GetString();
+                    if (pOut.TryGetProperty("score", out var oScore)) score = oScore.GetDouble();
+                }
+                else if (pOut.ValueKind == JsonValueKind.String)
+                {
+                    label = pOut.GetString();
+                }
+            }
+            return (label, score);
         }
     }
 }
