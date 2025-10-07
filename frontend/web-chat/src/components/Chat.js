@@ -5,6 +5,10 @@ export default function Chat({ apiUrl }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [username, setUsername] = useState(() =>
+    localStorage.getItem("chat_username") || ""
+  );
+  const [editingName, setEditingName] = useState(!localStorage.getItem("chat_username"));
   const messagesEndRef = useRef(null);
 
   const fetchMessages = async () => {
@@ -27,13 +31,17 @@ export default function Chat({ apiUrl }) {
 
   const sendMessage = async () => {
     if (!text.trim()) return;
+    if (!username.trim()) {
+      setEditingName(true);
+      return;
+    }
     setSending(true);
     try {
       const res = await fetch(`${apiUrl}/api/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        nickname: "batuhan",
+        nickname: username.trim(),
         text,
       }),
       });
@@ -54,12 +62,68 @@ export default function Chat({ apiUrl }) {
   return (
     <div className="chat-container">
       <h2 className="chat-title">Chat AI</h2>
+      <div className="chat-username-bar">
+        {editingName ? (
+          <div className="username-editor">
+            <input
+              className="username-input"
+              value={username}
+              placeholder="Kullanıcı adınız"
+              onChange={(e) => setUsername(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const v = username.trim();
+                  if (v) {
+                    (async () => {
+                      try {
+                        await fetch(`${apiUrl}/api/users/register`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ username: v }),
+                        });
+                      } catch {}
+                      localStorage.setItem("chat_username", v);
+                      setEditingName(false);
+                    })();
+                  }
+                }
+              }}
+            />
+            <button
+              className="username-save"
+              onClick={async () => {
+                const v = username.trim();
+                if (v) {
+                  try {
+                    await fetch(`${apiUrl}/api/users/register`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ username: v }),
+                    });
+                  } catch {}
+                  localStorage.setItem("chat_username", v);
+                  setEditingName(false);
+                }
+              }}
+            >
+              Kaydet
+            </button>
+          </div>
+        ) : (
+          <div className="username-display">
+            <span className="username-pill">{username}</span>
+            <button className="username-edit" onClick={() => setEditingName(true)}>
+              Değiştir
+            </button>
+          </div>
+        )}
+      </div>
       <div className="chat-messages">
         {messages.map((msg) => (
           <div
             key={msg.id}
             className={`chat-message ${
-              msg.nickname === "batuhan" ? "own-message" : ""
+              username && msg.nickname === username ? "own-message" : ""
             }`}
           >
             <div className="chat-avatar">
@@ -70,6 +134,9 @@ export default function Chat({ apiUrl }) {
                 <span className="chat-nickname">{msg.nickname}</span>
                 <span className={`chat-sentiment ${msg.sentiment || "pending"}`} title="Duygu Analizi">
                   {msg.sentiment || "analysing"}
+                </span>
+                <span className="chat-time" title={msg.createdAt}>
+                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
               <div className="chat-text">{msg.text}</div>

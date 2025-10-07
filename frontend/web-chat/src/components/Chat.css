@@ -19,6 +19,44 @@
   font-size: 1.25rem;
 }
 
+.chat-username-bar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.username-editor { display: flex; gap: 8px; }
+.username-input {
+  padding: 8px 10px;
+  border: 1px solid #d6deeb;
+  border-radius: 8px;
+}
+.username-save {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.username-display { display: flex; gap: 8px; align-items: center; }
+.username-pill {
+  background: #e3f2fd;
+  color: #0d47a1;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(25,118,210,0.25);
+  font-weight: 600;
+}
+.username-edit {
+  background: transparent;
+  border: 1px solid #90caf9;
+  color: #0d47a1;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
 .chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -82,6 +120,7 @@
   gap: 8px;
   margin-bottom: 2px;
 }
+.chat-time { margin-left: auto; font-size: 0.75em; color: #6b7280; }
 
 .chat-nickname {
   font-size: 0.95em;
