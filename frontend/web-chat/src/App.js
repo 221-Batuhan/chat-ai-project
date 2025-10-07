@@ -1,7 +1,7 @@
 import Chat from "./components/Chat";
 
 function App() {
-  const apiUrl = "https://chat-ai-project.onrender.com"; 
+  const apiUrl = "chat-ai-project-production.up.railway.app:8080";
   return <Chat apiUrl={apiUrl} />;  
 }
 
