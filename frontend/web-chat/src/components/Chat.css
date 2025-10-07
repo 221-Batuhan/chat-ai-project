@@ -221,6 +221,16 @@
   box-shadow: 0 10px 22px rgba(33, 150, 243, 0.32);
 }
 
+.chat-score {
+  font-size: 0.75em;
+  margin-left: 6px;
+  color: #374151;
+  background: #f3f4f6;
+  border: 1px solid rgba(0,0,0,0.05);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
 @media (max-width: 640px) {
   .chat-container {
     margin: 20px 12px;

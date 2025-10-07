@@ -135,6 +135,11 @@ export default function Chat({ apiUrl }) {
                 <span className={`chat-sentiment ${msg.sentiment || "pending"}`} title="Duygu Analizi">
                   {msg.sentiment || "analysing"}
                 </span>
+                {typeof msg.sentimentScore === "number" && (msg.sentiment || msg.sentimentScore > 0) && (
+                  <span className="chat-score" title={`Skor: ${msg.sentimentScore.toFixed(4)}`}>
+                    {(msg.sentimentScore * 100).toFixed(1)}%
+                  </span>
+                )}
                 <span className="chat-time" title={msg.createdAt}>
                   {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
