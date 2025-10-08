@@ -1,4 +1,4 @@
-#import "AppDelegate.h"
+#import <React/RCTAppDelegate.h>
 
 #import <React/RCTBundleURLProvider.h>
 
